@@ -1,0 +1,13 @@
+
+data:
+	hadoop fs -mkdir /user/cloudera/sssp/input
+	hadoop fs -put -f ../../../dataset/input/input.txt /user/cloudera/input
+
+clean:
+	hadoop fs -rm -r -f /user/cloudera/sssp/output*
+	hadoop fs -rm -r -f /user/cloudera/sssp/inputsub
+build:
+	hadoop com.sun.tools.javac.Main Preprocess.java ShortestPath.java Driver.java
+	jar cf sssp.jar Driver*.class Preprocess*.class ShortestPath*.class
+run:
+	hadoop jar sssp.jar Driver /user/cloudera/sssp/input /user/cloudera/sssp/inputsub /user/cloudera/sssp/output
