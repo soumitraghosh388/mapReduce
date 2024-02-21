@@ -13,6 +13,7 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FSDataInputStream;
 import java.net.URI;
 import java.io.BufferedReader;
@@ -117,13 +118,13 @@ public class ShortestPath extends Configured implements Tool{
 			job.setJarByClass(ShortestPath.class);
 			job.setMapperClass(Map.class);
 			job.setReducerClass(Reduce.class);
-			job.setNumReduceTasks(1);
+			job.setNumReduceTasks(3);
 			job.setOutputKeyClass(Text.class);
 			job.setOutputValueClass(Text.class);
 			FileInputFormat.addInputPath(job, inPath);
 			FileOutputFormat.setOutputPath(job, outPath);
 			res = job.waitForCompletion(true);
-			isStop = checkStopCriteria(new Path(outPath.toString()+"/part-r-00000"));
+			isStop = checkStopCriteria(outPath);
 			inPath = outPath;
 		}
 		return res ? 0 : 1;
@@ -143,20 +144,41 @@ public class ShortestPath extends Configured implements Tool{
 	{
 		Configuration con = new Configuration();
 		FileSystem fs = FileSystem.get(inPath.toUri(), con);
-		FSDataInputStream in = fs.open(inPath);
-		BufferedReader br = new BufferedReader(new InputStreamReader(in));
-		String line = br.readLine();
-		System.out.println("line : "+line);
-		while(line!=null)
+		List<String> files = getFiles(inPath, fs);
+		for (String file : files)
 		{
-			String[] split1 = line.split("\\t");
-			String dist = split1[1].split(",")[1];
-			System.out.println("dist :"+dist);
-			if (dist.equals("inf"))
-				return false;
-			line = br.readLine();
+			FSDataInputStream in = fs.open(new Path(file));
+			BufferedReader br = new BufferedReader(new InputStreamReader(in));
+			String line = br.readLine();
 			System.out.println("line : "+line);
+			while(line!=null)
+			{
+				String[] split1 = line.split("\\t");
+				String dist = split1[1].split(",")[1];
+				System.out.println("dist :"+dist);
+				if (dist.equals("inf"))
+					return false;
+				line = br.readLine();
+				System.out.println("line : "+line);
+			}
 		}
 		return true;
 	}
+	
+	public List<String> getFiles(Path inPath, FileSystem fs) throws Exception
+	{
+		List<String> fileList = new ArrayList<String>();
+		FileStatus[] fileStatus = fs.listStatus(inPath);
+		for (FileStatus filest : fileStatus)
+		{
+			fileList.add(filest.getPath().toString());
+		}
+		return fileList;
+	}
 }
+
+
+
+
+
+
